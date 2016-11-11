@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 using NSubstitute.Core;
 using NSubstitute.Routing;
-#if (NET4 || NET45)
+using NSubstitute.ClearExtensions;
+#if (NET4 || NET45 || NETSTANDARD1_5)
 using System.Threading.Tasks;
 #endif
 
@@ -38,7 +38,7 @@ namespace NSubstitute
             return Returns(MatchArgs.AsSpecifiedInCall, returnThis, returnThese);
         }
 
-#if (NET4 || NET45)
+#if (NET4 || NET45 || NETSTANDARD1_5)
         /// <summary>
         /// Set a return value for this call. The value(s) to be returned will be wrapped in Tasks.
         /// </summary>
@@ -141,8 +141,8 @@ namespace NSubstitute
                 returnValue = new ReturnValue(returnThis);
             }
             else
-            {            
-                returnValue = new ReturnMultipleValues<T>(new[] {returnThis}.Concat(returnThese));
+            {
+                returnValue = new ReturnMultipleValues<T>(new[] { returnThis }.Concat(returnThese));
             }
             return context.LastCallShouldReturn(returnValue, matchArgs);
         }
@@ -250,11 +250,12 @@ namespace NSubstitute
         /// <param name="substitute"></param>
         /// <remarks>
         /// Note that this will not clear any results set up for the substitute using Returns().
+        /// See <see cref="NSubstitute.ClearExtensions.ClearExtensions.ClearSubstitute{T}"/> for more options with resetting 
+        /// a substitute.
         /// </remarks>
         public static void ClearReceivedCalls<T>(this T substitute) where T : class
         {
-            var router = GetRouterForSubstitute(substitute);
-            router.ClearReceivedCalls();
+            substitute.ClearSubstitute(ClearOptions.ReceivedCalls);
         }
 
         /// <summary>
@@ -268,7 +269,7 @@ namespace NSubstitute
         public static WhenCalled<T> When<T>(this T substitute, Action<T> substituteCall) where T : class
         {
             var context = SubstitutionContext.Current;
-            return new WhenCalled<T>(context, substitute, substituteCall, MatchArgs.AsSpecifiedInCall);            
+            return new WhenCalled<T>(context, substitute, substituteCall, MatchArgs.AsSpecifiedInCall);
         }
 
         /// <summary>
@@ -282,7 +283,7 @@ namespace NSubstitute
         public static WhenCalled<T> WhenForAnyArgs<T>(this T substitute, Action<T> substituteCall) where T : class
         {
             var context = SubstitutionContext.Current;
-            return new WhenCalled<T>(context, substitute, substituteCall, MatchArgs.Any);            
+            return new WhenCalled<T>(context, substitute, substituteCall, MatchArgs.Any);
         }
 
         /// <summary>
@@ -296,7 +297,7 @@ namespace NSubstitute
             return GetRouterForSubstitute(substitute).ReceivedCalls();
         }
 
-#if NET4 || NET45
+#if (NET4 || NET45 || NETSTANDARD1_5)
         private static Func<CallInfo, Task<T>> WrapFuncInTask<T>(Func<CallInfo, T> returnThis)
         {
             return x => CompletedTask(returnThis(x));
@@ -304,7 +305,7 @@ namespace NSubstitute
 
         private static Task<T> CompletedTask<T>(T result) 
         {
-#if NET45
+#if (NET45 || NETSTANDARD1_5)
             return Task.FromResult(result);
 #elif NET4
             var tcs = new TaskCompletionSource<T>();
